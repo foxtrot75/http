@@ -75,10 +75,11 @@ void Client::_createRequest(Query const& query, http::verb method)
     _request.body() = query.body;
     _request.prepare_payload();
 
-    LOG(debug) << _request.base()
-               << (_request.payload_size() < _payloadLimit
-                   ? _request.body()
-                   : "");
+    LOG(debug)
+        << _request.base()
+        << (_request.payload_size() < _payloadLimit
+            ? _request.body()
+            : "");
 }
 
 void Client::_run()
@@ -90,8 +91,9 @@ void Client::_run()
             shared_from_this()));
 }
 
-void Client::_onResolve(beast::error_code ec,
-                        asio::ip::tcp::resolver::results_type results)
+void Client::_onResolve(
+    beast::error_code ec,
+    asio::ip::tcp::resolver::results_type results)
 {
     if(ec)
         return _processError(ec, "Resolve");
@@ -106,8 +108,9 @@ void Client::_onResolve(beast::error_code ec,
             shared_from_this()));
 }
 
-void Client::_onConnect(beast::error_code ec,
-                        asio::ip::tcp::resolver::results_type::endpoint_type endpoint)
+void Client::_onConnect(
+    beast::error_code ec,
+    asio::ip::tcp::resolver::results_type::endpoint_type endpoint)
 {
     boost::ignore_unused(endpoint);
 
@@ -124,8 +127,7 @@ void Client::_onConnect(beast::error_code ec,
             shared_from_this()));
 }
 
-void Client::_onWrite(beast::error_code ec,
-                      size_t bytes_transferred)
+void Client::_onWrite(beast::error_code ec, size_t bytes_transferred)
 {
     boost::ignore_unused(bytes_transferred);
 
@@ -142,18 +144,18 @@ void Client::_onWrite(beast::error_code ec,
             shared_from_this()));
 }
 
-void Client::_onRead(beast::error_code ec,
-                     size_t bytes_transferred)
+void Client::_onRead(beast::error_code ec, size_t bytes_transferred)
 {
     boost::ignore_unused(bytes_transferred);
 
     if(ec)
         return _processError(ec, "Read");
 
-    LOG(debug) << _response.base()
-               << (_response.payload_size() < _payloadLimit
-                   ? _response.body()
-                   : "");
+    LOG(debug)
+        << _response.base()
+        << (_response.payload_size() < _payloadLimit
+            ? _response.body()
+            : "");
 
     _condition.notify_all();
 

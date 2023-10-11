@@ -33,8 +33,12 @@ private:
     void _createRequest(Query const& query, http::verb method);
 
     void _run();
-    void _onResolve(beast::error_code ec, asio::ip::tcp::resolver::results_type results);
-    void _onConnect(beast::error_code ec, asio::ip::tcp::resolver::results_type::endpoint_type endpoint);
+    void _onResolve(
+        beast::error_code ec,
+        asio::ip::tcp::resolver::results_type results);
+    void _onConnect(
+        beast::error_code ec,
+        asio::ip::tcp::resolver::results_type::endpoint_type endpoint);
     void _onHandshake(beast::error_code ec);
     void _onWrite(beast::error_code ec, size_t bytes_transferred);
     void _onRead(beast::error_code ec, size_t bytes_transferred);
