@@ -4,7 +4,7 @@
 
 #include "http/client.hpp"
 
-namespace Http
+namespace http
 {
 
 Client::Client(asio::io_context& ioc)
@@ -12,7 +12,7 @@ Client::Client(asio::io_context& ioc)
     , _stream(ioc)
 {}
 
-void Client::setup(std::string const& host, uint16_t port)
+void Client::setup(std::string_view host, uint16_t port)
 {
     _host = host;
     _port = port;
@@ -23,10 +23,10 @@ void Client::setTimeout(std::chrono::seconds timeout)
     _timeout = timeout;
 }
 
-bool Client::get(Query const& query, std::string& response)
+bool Client::get(Request const& request, std::string& response)
 {
     std::scoped_lock lock(_mutex);
-    _createRequest(query, http::verb::get);
+    _createRequest(request, http::verb::get);
     _run();
 
     _condition.wait(_mutex);
@@ -38,10 +38,10 @@ bool Client::get(Query const& query, std::string& response)
     return true;
 }
 
-bool Client::post(Query const& query, std::string& response)
+bool Client::post(Request const& request, std::string& response)
 {
     std::scoped_lock lock(_mutex);
-    _createRequest(query, http::verb::post);
+    _createRequest(request, http::verb::post);
     _run();
 
     _condition.wait(_mutex);
@@ -53,12 +53,12 @@ bool Client::post(Query const& query, std::string& response)
     return true;
 }
 
-void Client::_createRequest(Query const& query, http::verb method)
+void Client::_createRequest(Request const& request, http::verb method)
 {
-    std::string target = query.target;
-    if(query.params.size()) {
+    std::string target = request.target;
+    if(request.params.size()) {
         target += "?";
-        for(auto& [key, value] : query.params)
+        for(auto& [key, value]: request.params)
             target += key + "=" + value + "&";
         target.pop_back();
     }
@@ -69,11 +69,13 @@ void Client::_createRequest(Query const& query, http::verb method)
     _request.set(http::field::host, _host);
     _request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
-    for(auto& [key, value] : query.fields)
+    for(auto& [key, value]: request.fields)
         _request.set(key, value);
 
-    _request.body() = query.body;
-    _request.prepare_payload();
+    if(!request.body.empty()) {
+        _request.body() = request.body;
+        _request.prepare_payload();
+    }
 
     LOG(debug)
         << _request.base()
@@ -85,7 +87,8 @@ void Client::_createRequest(Query const& query, http::verb method)
 void Client::_run()
 {
     _resolver.async_resolve(
-        _host.data(), std::to_string(_port).data(),
+        _host.data(),
+        std::to_string(_port).data(),
         beast::bind_front_handler(
             &Client::_onResolve,
             shared_from_this()));
@@ -127,7 +130,7 @@ void Client::_onConnect(
             shared_from_this()));
 }
 
-void Client::_onWrite(beast::error_code ec, size_t bytes_transferred)
+void Client::_onWrite(beast::error_code ec, std::size_t bytes_transferred)
 {
     boost::ignore_unused(bytes_transferred);
 
@@ -144,7 +147,7 @@ void Client::_onWrite(beast::error_code ec, size_t bytes_transferred)
             shared_from_this()));
 }
 
-void Client::_onRead(beast::error_code ec, size_t bytes_transferred)
+void Client::_onRead(beast::error_code ec, std::size_t bytes_transferred)
 {
     boost::ignore_unused(bytes_transferred);
 

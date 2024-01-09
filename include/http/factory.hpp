@@ -5,29 +5,34 @@
 #include "client.hpp"
 #include "ssl_client.hpp"
 
-namespace Http
+#include "server.hpp"
+
+namespace http
 {
 
 namespace asio = boost::asio;
 
 class Factory
+    : std::enable_shared_from_this<Factory>
 {
 public:
-    explicit Factory();
-    explicit Factory(std::string const& host);
+    static std::shared_ptr<Factory> getFactory();
+
+    Factory();
     virtual ~Factory();
 
-    void setHost(std::string const& host);
+    bool addCertificate(std::string_view cert);
 
-    std::shared_ptr<Client>     getClient();
-    std::shared_ptr<SslClient>  getSslClient();
+    std::shared_ptr<Client>     getClient(std::string_view host = "127.0.0.1", uint16_t port = 80);
+    std::shared_ptr<SslClient>  getSslClient(std::string_view host = "127.0.0.1", uint16_t port = 443);
+
+    std::shared_ptr<Server>     getServer(std::string_view host = "0.0.0.0", uint16_t port = 7500);
 
 private:
-    asio::io_context                _ioc;
-    asio::io_context::work          _work;
-    asio::ssl::context              _ctx;
-    std::shared_ptr<std::thread>    _thread;
-    std::string                     _host;
+    asio::io_context            _ioc;
+    asio::io_context::work      _work;
+    asio::ssl::context          _ctx;
+    std::vector<std::thread>    _threads;
 };
 
 }

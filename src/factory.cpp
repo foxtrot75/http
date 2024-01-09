@@ -5,47 +5,67 @@
 
 #include "http/factory.hpp"
 
-namespace Http
+namespace http
 {
+
+std::shared_ptr<Factory> Factory::getFactory()
+{
+    static std::shared_ptr<Factory> _factory = std::make_shared<Factory>();
+    return _factory;
+}
 
 Factory::Factory()
-    : Factory("")
-{}
-
-Factory::Factory(std::string const& host)
     : _work(_ioc)
     , _ctx(boost::asio::ssl::context::tlsv12_client)
-    , _host(host)
 {
     _ctx.set_default_verify_paths();
-    _ctx.set_verify_mode(boost::asio::ssl::verify_none);
+    _ctx.set_verify_mode(boost::asio::ssl::verify_peer);
 
-    _thread = std::make_shared<std::thread>([this]() { _ioc.run(); });
+    for(int i = 0; i < 2; ++i)
+        _threads.emplace_back(std::thread([this]() { _ioc.run(); }));
 }
 
 Factory::~Factory()
 {
     _ioc.stop();
-    _thread->join();
+
+    for(auto& t: _threads)
+        t.join();
 }
 
-void Factory::setHost(std::string const& host)
+bool Factory::addCertificate(std::string_view cert)
 {
-    _host = host;
+    if(cert.empty())
+        return true;
+
+    boost::system::error_code ec;
+    _ctx.add_certificate_authority({cert.data(), cert.size()}, ec);
+
+    if(ec)
+        return false;
+
+    return true;
 }
 
-std::shared_ptr<Client> Factory::getClient()
+std::shared_ptr<Client> Factory::getClient(std::string_view host, uint16_t port)
 {
     auto client = std::make_shared<Client>(_ioc);
-    client->setup(_host, 80);
+    client->setup(host, port);
     return client;
 }
 
-std::shared_ptr<SslClient> Factory::getSslClient()
+std::shared_ptr<SslClient> Factory::getSslClient(std::string_view host, uint16_t port)
 {
     auto client = std::make_shared<SslClient>(_ioc, _ctx);
-    client->setup(_host, 443);
+    client->setup(host, port);
     return client;
+}
+
+std::shared_ptr<Server> Factory::getServer(std::string_view host, uint16_t port)
+{
+    auto server = std::make_shared<Server>(_ioc);
+    server->setup(host, port);
+    return server;
 }
 
 }
